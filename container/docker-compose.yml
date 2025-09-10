@@ -1,0 +1,10 @@
+services:
+  mainpipe:
+    build:
+      context: .       # looks for Dockerfile in this folder
+      dockerfile: Dockerfile
+    container_name: mainpipe
+    volumes:
+      - ./data:/usr/app/data
+    tty: true
+    # command: python download_dataset.py
