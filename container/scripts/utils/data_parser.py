@@ -1,6 +1,9 @@
+import logging
 import re
 
 from transformers import AutoTokenizer
+
+logger = logging.getLogger(__name__)
 
 
 class DataParser:
@@ -25,6 +28,11 @@ class DataParser:
     @classmethod
     def tokenize_text(cls, texts):
         """Tokenize a list of texts using the preloaded tokenizer."""
+        assert isinstance(
+            texts, list
+        ), "Input to tokenize_text must be a list of strings"
+        if not texts:
+            logger.warning("No texts passed for tokenization.")
         return cls.tokenizer(
             texts,
             padding=True,
