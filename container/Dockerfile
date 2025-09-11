@@ -1,16 +1,19 @@
 FROM python:3.10
 
-#Copy scripts
-COPY ./scripts /usr/scripts/ 
-RUN chmod a+x /usr/scripts/*.sh
+# Install CA certificates for SSL
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-#Install Python Dependencies
-COPY ./requirements.txt /usr/app/requirements.txt
-RUN pip install --upgrade pip
-RUN pip install -r /usr/app/requirements.txt
-
-#Copy Project
-
+# Set working directory inside container
 WORKDIR /usr/scripts
 
-CMD [ "/usr/scripts/entrypoint.sh" ]
+# Copy scripts & requirements
+COPY ./scripts /usr/scripts/
+RUN chmod +x /usr/scripts/*.sh
+COPY ./requirements.txt /usr/scripts/requirements.txt
+
+# Install dependencies
+RUN pip install --upgrade pip
+RUN pip install -r /usr/scripts/requirements.txt
+
+# Default command runs the entrypoint
+CMD ["/usr/scripts/entrypoint.sh"]

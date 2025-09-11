@@ -1,107 +1,66 @@
+# main.py
 import json
-import logging
 import os
 
+import yaml
 from utils.data_parser import DataParser
 from utils.data_prep import DatasetPreper
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
 
-# Paths
-INPUT_DIR = "data"  # raw downloaded JSONL files
-OUTPUT_DIR_PROCESSED = "processed"  # intermediate processed/tokenized files
-OUTPUT_DIR_SHARDS = "processed_shards"  # final shards
-os.makedirs(OUTPUT_DIR_PROCESSED, exist_ok=True)
-os.makedirs(OUTPUT_DIR_SHARDS, exist_ok=True)
-
-# Dataset files
-dataset_files = [
-    "pubmed.jsonl",
-    "wikipedia.jsonl",
-    "c4_en.jsonl",
-]
-
-# Mixing ratios
-ratios = {
-    "pubmed": 0.25,
-    "wikipedia": 0.25,
-    "c4": 0.25,
-}
-
-SHARD_SIZE = 1000
-
-
-def preprocess_file(file_name):
-    input_path = os.path.join(INPUT_DIR, file_name)
-    processed_data = []
-
-    # Load raw text
-    with open(input_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            text = json.loads(line)["text"]
-            cleaned = DataParser.clean_text(text)
-            normalized = DataParser.normalize_text(cleaned)
-            processed_data.append(normalized)
-
-    assert processed_data, f"No valid examples found in {file_name}"
-
-    tokenized = DataParser.tokenize_text(processed_data)
-
-    processed_file_path = os.path.join(
-        OUTPUT_DIR_PROCESSED, f"{file_name.split('.')[0]}_processed.jsonl"
-    )
-    with open(processed_file_path, "w", encoding="utf-8") as f:
-        for i, text in enumerate(processed_data):
-            f.write(
-                json.dumps(
-                    {
-                        "text": text,
-                        "input_ids": tokenized["input_ids"][i].tolist(),
-                        "source": file_name.split(".")[0],
-                    }
-                )
-                + "\n"
-            )
-
-    # Save inspection file
-    inspect_file = processed_file_path.replace(".jsonl", "_inspect.jsonl")
-    with open(inspect_file, "w", encoding="utf-8") as f:
-        for i in range(min(5, len(processed_data))):
-            f.write(
-                json.dumps(
-                    {
-                        "text": processed_data[i],
-                        "input_ids": tokenized["input_ids"][i].tolist(),
-                        "source": file_name.split(".")[0],
-                    }
-                )
-                + "\n"
-            )
-    logger.info(f"[INSPECT] Saved 5 examples for {file_name} -> {inspect_file}")
-
-    logger.info(
-        f"[DONE] {file_name} -> {processed_file_path}, {len(processed_data)} samples"
-    )
-    return processed_file_path
+def load_config():
+    env = os.getenv("ENV", "mainpipe_nonprod")
+    config_path = f"config/{env}.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 
 if __name__ == "__main__":
+    config = load_config()
+    parser = DataParser(config)
+    INPUT_DIR = "data"
+    OUTPUT_DIR_PROCESSED = "processed"
+    OUTPUT_DIR_SHARDS = "processed_shards"
+    os.makedirs(OUTPUT_DIR_PROCESSED, exist_ok=True)
+    os.makedirs(OUTPUT_DIR_SHARDS, exist_ok=True)
+
+    dataset_files = ["pubmed.jsonl", "wikipedia.jsonl", "c4_en.jsonl"]
+
     processed_files = {}
     for file_name in dataset_files:
-        processed_path = preprocess_file(file_name)
-        key = file_name.split(".")[0]
-        processed_files[key] = processed_path
+        input_path = os.path.join(INPUT_DIR, file_name)
+        processed_data = []
+        with open(input_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                text = json.loads(line)["text"]
+                cleaned = parser.clean_text(text)
+                normalized = parser.normalize_text(cleaned)
+                processed_data.append(normalized)
+
+        tokenized = parser.tokenize_text(processed_data)
+
+        processed_file_path = os.path.join(
+            OUTPUT_DIR_PROCESSED, f"{file_name.split('.')[0]}_processed.jsonl"
+        )
+        with open(processed_file_path, "w", encoding="utf-8") as f:
+            for i, text in enumerate(processed_data):
+                f.write(
+                    json.dumps(
+                        {"text": text, "input_ids": tokenized["input_ids"][i].tolist()}
+                    )
+                    + "\n"
+                )
+        processed_files[file_name.split(".")[0]] = processed_file_path
 
     preparer = DatasetPreper(processed_files, output_dir=OUTPUT_DIR_SHARDS)
     preparer.load_datasets()
-    preparer.mix_datasets(ratios=ratios)
-    preparer.shard_and_save(shard_size=SHARD_SIZE, as_arrow=False)
+    preparer.mix_datasets(ratios=config["mixing"]["ratios"])
+    preparer.debug_dataset(config["debug"])  # 👈 Debug (lightweight)
+    preparer.inspect_dataset(config["inspect"])  # 👈 Inspect (deep)
+    preparer.shard_and_save(
+        shard_size=config["sharding"]["shard_size"],
+        as_arrow=config["sharding"]["as_arrow"],
+    )
 
-    logger.info("All datasets processed, mixed, and sharded successfully!")
+    print("✅ All datasets processed, mixed, inspected, and sharded successfully!")
