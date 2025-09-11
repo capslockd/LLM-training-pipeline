@@ -47,18 +47,18 @@ The **Mainpipe pipeline** is an end-to-end data preparation system designed to:
 *** Pipeline Flow Diagram ***
 ```mermaid
 flowchart TD
-    A[Start: Docker / CLI Run] --> B[RetrieveDatasets.download_datasets()]
-    B --> C[DataParser: Clean & Normalize Text]
-    C --> D[DataParser: Tokenize Text (input_ids)]
-    D --> E[DatasetPreper: Load Processed JSONL Files]
-    E --> F[DatasetPreper: Mix Datasets with Configurable Ratios]
-    F --> G[DatasetPreper: Shard into JSONL / Arrow Files]
+    A[Start: Docker or CLI Run] --> B[Retrieve Datasets]
+    B --> C[Clean & Normalize Text]
+    C --> D[Tokenize Text into input_ids]
+    D --> E[Load Processed JSONL Files]
+    E --> F[Mix Datasets with Configurable Ratios]
+    F --> G[Shard into JSONL or Arrow Files]
     G --> H{Inspect & Debug?}
-    H -- Yes --> I[Generate Inspect Reports (Length, PII, Duplicates, Language)]
+    H -- Yes --> I[Generate Inspect Reports: Length, PII, Duplicates, Language]
     H -- No --> J[Skip Inspect]
     I --> K[Output: Shards + Inspect Reports]
     J --> K[Output: Shards Only]
-    K --> L[End: Ready for Model Training]
+    K --> L[End: Training-Ready Datasets]
 ```
 
 ## 3. Configuration
@@ -157,7 +157,7 @@ docker run --rm \
 
 ### 6. Testing, Validation & Inspectability
 
-*** Debug / Inspect ***
+**Debug / Inspect**
 
 	-	Debug (fast): sample previews (first n processed samples). Controlled by debug.enabled and inspect_samples.
 	-	Inspect (deeper): corpus-level metrics such as:
