@@ -5,6 +5,11 @@ import os
 import yaml
 from utils.data_parser import DataParser
 from utils.data_prep import DatasetPreper
+from utils.download_dataset import RetrieveDatasets
+
+INPUT_DIR = "data"
+OUTPUT_DIR_PROCESSED = "processed"
+OUTPUT_DIR_SHARDS = "processed_shards"
 
 
 def load_config():
@@ -16,14 +21,11 @@ def load_config():
 
 if __name__ == "__main__":
     config = load_config()
+    RetrieveDatasets.download_datasets(output_dir=INPUT_DIR)
     parser = DataParser(config)
-    INPUT_DIR = "data"
-    OUTPUT_DIR_PROCESSED = "processed"
-    OUTPUT_DIR_SHARDS = "processed_shards"
     os.makedirs(OUTPUT_DIR_PROCESSED, exist_ok=True)
     os.makedirs(OUTPUT_DIR_SHARDS, exist_ok=True)
-
-    dataset_files = ["pubmed.jsonl", "wikipedia.jsonl", "c4_en.jsonl"]
+    dataset_files = config.get("datasets", [])
 
     processed_files = {}
     for file_name in dataset_files:
@@ -63,4 +65,4 @@ if __name__ == "__main__":
         as_arrow=config["sharding"]["as_arrow"],
     )
 
-    print("✅ All datasets processed, mixed, inspected, and sharded successfully!")
+    print("All datasets processed, mixed, inspected, and sharded successfully!")
