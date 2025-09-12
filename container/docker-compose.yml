@@ -1,0 +1,11 @@
+services:
+  mainpipe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mainpipe
+    tty: true
+    volumes:
+      - ./data:/usr/scripts/data
+      - ./processed_shards:/usr/scripts/processed_shards
+      - ./inspect_reports:/usr/scripts/inspect_reports

@@ -1,0 +1,55 @@
+# Input / Output Control
+paths:
+  input_dir: "data"
+  processed_dir: "processed"
+  shards_dir: "processed_shards"
+  inspect_dir: "inspect_reports"
+
+datasets:
+  - pubmed.jsonl
+  - wikipedia.jsonl
+  - c4_en.jsonl
+  # - github.jsonl
+
+# Preprocessing Settings
+preprocessing:
+  lowercase: true
+  remove_punct: true
+  normalize_numbers: true
+  max_length: 512
+  tokenizer_model: "bert-base-uncased"
+
+# Mixing Settings
+mixing:
+  ratios:
+    pubmed: 0.4
+    wikipedia: 0.3
+    c4: 0.3
+    # github: 0.3
+  shuffle_seed: 42
+
+# Sharding Settings
+sharding:
+  shard_size: 2000
+  as_arrow: false
+  prefix: "shard"
+  compression: null # options: null, "gz"
+
+# Inspectability / Debug
+debug:
+  enabled: true
+  inspect_samples: 5
+  verbose: true
+
+inspect:
+  enabled: true
+  output_dir: "inspect_reports"
+  detect_language: true
+  check_duplicates: true
+  check_pii: true
+
+# Performance / Runtime
+runtime:
+  streaming: false
+  num_workers: 1
+  batch_size: 16
