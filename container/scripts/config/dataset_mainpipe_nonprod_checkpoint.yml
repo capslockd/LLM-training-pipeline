@@ -1,0 +1,10 @@
+datasets:
+  PubMed Abstracts:
+    last_index: 0
+    output_file: data/pubmed.jsonl
+  Wikipedia (en):
+    last_index: 0
+    output_file: data/wikipedia.jsonl
+  allenai/c4:
+    last_index: 0
+    output_file: data/c4_en.jsonl

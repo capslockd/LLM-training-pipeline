@@ -1,7 +1,9 @@
 # Input / Output Control
-input_dir: "data"
-output_processed_dir: "processed"
-output_shards_dir: "processed_shards"
+paths:
+  input_dir: "data"
+  processed_dir: "processed"
+  shards_dir: "processed_shards"
+  inspect_dir: "inspect_reports"
 
 datasets:
   - pubmed.jsonl

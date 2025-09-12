@@ -36,29 +36,37 @@ The **Mainpipe pipeline** is an end-to-end data preparation system designed to:
     - Shard into `.jsonl` or `.arrow`.  
     - Run **debug sampling** or **inspectability checks** (histograms, PII detection, duplicates).
 
+- **`DatasetCheckpoint` (`utils/dataset_monitor.py`)**  
+  - Handles **dataset checkpoint to prevent reprocessing the same dataset**:  
+    - Load previous checkpoint markers for each dataset
+    - "Update" checkpoints after successfully downloading them
+        - Update is limited due to it running on a container.
+
 - **`main.py`**  
   - Orchestration layer:  
     - Downloads datasets via `RetrieveDatasets`.  
+    - Check and update dataset checkpoint markers datasets via `DatasetCheckpoint`.  
     - Cleans/normalizes/tokenizes via `DataParser`.  
     - Loads/mixes/shards via `DatasetPreper`.  
     - Produces debug and inspect outputs if enabled.  
 
 ---
-*** Pipeline Flow Diagram ***
+** Pipeline Flow Diagram **
 ```mermaid
 flowchart TD
     A[Start: Docker or CLI Run] --> B[Retrieve Datasets]
-    B --> C[Clean & Normalize Text]
-    C --> D[Tokenize Text into input_ids]
-    D --> E[Load Processed JSONL Files]
-    E --> F[Mix Datasets with Configurable Ratios]
-    F --> G[Shard into JSONL or Arrow Files]
-    G --> H{Inspect & Debug?}
-    H -- Yes --> I[Generate Inspect Reports: Length, PII, Duplicates, Language]
-    H -- No --> J[Skip Inspect]
-    I --> K[Output: Shards + Inspect Reports]
-    J --> K[Output: Shards Only]
-    K --> L[End: Training-Ready Datasets]
+    B --> C[Check and Update Dataset Checkpoint Markers]
+    C --> D[Clean & Normalize Text]
+    D --> E[Tokenize Text into input_ids]
+    E --> F[Load Processed JSONL Files]
+    F --> G[Mix Datasets with Configurable Ratios]
+    G --> H[Shard into JSONL or Arrow Files]
+    H --> I{Inspect & Debug?}
+    I -- Yes --> J[Generate Inspect Reports: Length, PII, Duplicates, Language]
+    I -- No --> K[Skip Inspect]
+    K --> L[Output: Shards + Inspect Reports]
+    L --> M[Output: Shards Only]
+    M --> O[End: Training-Ready Datasets]
 ```
 
 ## 3. Configuration
@@ -66,43 +74,61 @@ flowchart TD
 All pipeline parameters are centralized in `config/mainpipe_nonprod.yaml`.  
 
 ```yaml
+# Input / Output Control
+paths:
+  input_dir: "data"
+  processed_dir: "processed"
+  shards_dir: "processed_shards"
+  inspect_dir: "inspect_reports"
+
 datasets:
   - pubmed.jsonl
   - wikipedia.jsonl
   - c4_en.jsonl
   # - github.jsonl
 
+# Preprocessing Settings
 preprocessing:
-  tokenizer: "bert-base-uncased"
-  max_length: 512
-  normalize_numbers: true
   lowercase: true
+  remove_punct: true
+  normalize_numbers: true
+  max_length: 512
+  tokenizer_model: "bert-base-uncased"
 
+# Mixing Settings
 mixing:
   ratios:
-    pubmed: 0.25
-    wikipedia: 0.25
-    c4: 0.25
+    pubmed: 0.4
+    wikipedia: 0.3
+    c4: 0.3
+    # github: 0.3
   shuffle_seed: 42
 
+# Sharding Settings
 sharding:
-  shard_size: 1000
+  shard_size: 2000
   as_arrow: false
   prefix: "shard"
+  compression: null # options: null, "gz"
 
-# Debugging (fast, lightweight)
+# Inspectability / Debug
 debug:
   enabled: true
   inspect_samples: 5
   verbose: true
 
-# Inspectability (full dataset-level checks)
 inspect:
   enabled: true
   output_dir: "inspect_reports"
   detect_language: true
   check_duplicates: true
   check_pii: true
+
+# Performance / Runtime
+runtime:
+  streaming: false
+  num_workers: 1
+  batch_size: 16
 
 ```
 ---
@@ -123,7 +149,9 @@ Run pipeline (recommended — runs inside container, writes to host via volumes)
 Mount host folders so outputs persist on host:
 
 ```bash
-docker run --rm \        
+> cd container/scripts
+> docker run --rm \
+  -v $(pwd)/config:/usr/scripts/config \
   -v $(pwd)/data:/usr/scripts/data \
   -v $(pwd)/processed:/usr/scripts/processed \
   -v $(pwd)/processed_shards:/usr/scripts/processed_shards \
@@ -139,7 +167,7 @@ docker run --rm \
 	    - pubmed.jsonl (~50MB target)
 	    - wikipedia.jsonl (~20MB target)
 	    - c4_en.jsonl (~50MB target)
-	    - optionally github.jsonl (configurable / max_samples recommended)
+	    - github.jsonl (Not working, at the moment)
 
     - processed/ — intermediate *_processed.jsonl containing:
 	    - "text" (cleaned + normalized)
@@ -172,5 +200,8 @@ docker run --rm \
 
 	-   GitHub subset: streaming+filtering The Pile is slow. Options:
 	    - Maybe could use a pre-split code dataset (e.g., bigcode/the-stack, codeparrot/github-code).
-	    
 	-   Tokenizer choice: bert-base-uncased is a general-purpose tokenizer (good baseline). For domain-specific tasks (biomedical, code) use specialized tokenizers (PubMedBERT, CodeBERT) or other model specific tokenizers.
+    - Improve performance of the DataParser class by adding more streaming flag (reduce memory load), increase worker count and batch sizes 
+        - Currently only added in the config under **Performance/Runtime** options
+    - Add flexiblity to save other output formats. Currently only support arrow.
+    - Improve incremental runs due to data checkpoint parsing.
