@@ -64,9 +64,9 @@ flowchart TD
     H --> I{Inspect & Debug?}
     I -- Yes --> J[Generate Inspect Reports: Length, PII, Duplicates, Language]
     I -- No --> K[Skip Inspect]
-    K --> L[Output: Shards + Inspect Reports]
-    L --> M[Output: Shards Only]
-    M --> O[End: Training-Ready Datasets]
+    J --> L[Output: Shards + Inspect Reports]
+    K --> L
+    L --> M[End: Training-Ready Datasets]
 ```
 
 ## 3. Configuration
