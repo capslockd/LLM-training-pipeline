@@ -1,7 +1,7 @@
-# Mainpipe Dataset Pipeline — Design Report
+# LLM Training Prep Pipeline
 
 ## 1. Overview
-The **Mainpipe pipeline** is an end-to-end data preparation system designed to:
+The **LLM Training Prep Pipeline** is an end-to-end data preparation system designed to:
 
 1. **Retrieve datasets** (PubMed Abstracts, Wikipedia, GitHub code, C4 web text).  
 2. **Preprocess** text (cleaning, normalization, tokenization).  
